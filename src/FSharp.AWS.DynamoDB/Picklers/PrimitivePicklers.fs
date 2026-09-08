@@ -128,7 +128,11 @@ type ByteArrayPickler() =
     override _.Pickle bs =
         if bs = null then Some <| AttributeValue(NULL = true)
         elif bs.Length = 0 then None
-        else Some <| AttributeValue(B = new MemoryStream(bs))
+        // NOTE: publiclyVisible=true so AWSSDK's StringUtils.FromMemoryStream can use its
+        // TryGetBuffer fast path; its ArrayPool.Rent/Read/Return fallback path does not check
+        // Stream.Read's return value, so it can silently splice stale pooled-buffer bytes into
+        // the encoded request if the stream's buffer isn't publicly exposable (see #482).
+        else Some <| AttributeValue(B = new MemoryStream(bs, 0, bs.Length, false, true))
 
     override _.UnPickle a =
         if a.IsNULL then null
@@ -145,7 +149,11 @@ type MemoryStreamPickler() =
     override _.Pickle m =
         if m = null then Some <| AttributeValue(NULL = true)
         elif m.Length = 0L then None
-        else Some <| AttributeValue(B = m)
+        // NOTE: hand AWSSDK a fresh, publicly-visible-buffer copy rather than the caller's stream
+        // as-is (see ByteArrayPickler.Pickle above for why: AWSSDK's StringUtils.FromMemoryStream
+        // otherwise falls back to a Rent/Read/Return path that can silently under-read). This also
+        // protects against the caller's stream not being positioned at 0.
+        else Some <| AttributeValue(B = new MemoryStream(m.ToArray(), 0, int m.Length, false, true))
 
     override _.UnPickle a =
         if a.IsNULL then null
