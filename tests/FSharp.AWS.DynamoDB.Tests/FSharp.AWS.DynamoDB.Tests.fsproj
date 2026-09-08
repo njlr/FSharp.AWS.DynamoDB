@@ -14,6 +14,7 @@
     <Compile Include="SparseGSITests.fs" />
     <Compile Include="PaginationTests.fs" />
     <Compile Include="MetricsCollectorTests.fs" />
+    <Compile Include="TransactionBinaryPayloadTests.fs" />
     <Compile Include="DynamoUtilsTests.fs" />
   </ItemGroup>
   <ItemGroup>
